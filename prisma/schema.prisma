@@ -1,0 +1,143 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  orders    Order[]
+  reviews   Review[]
+  cartItems CartItem[]
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  books Book[]
+}
+
+model Book {
+  id          String   @id @default(cuid())
+  title       String
+  author      String
+  description String?
+  isbn        String?  @unique
+  price       Float
+  coverImage  String?
+  fileUrl     String?
+  fileSize    Int?     // in bytes
+  format      String?  // e.g., "PDF", "EPUB"
+  language    String?  @default("English")
+  publisher   String?
+  publishDate DateTime?
+  pageCount   Int?
+  featured    Boolean  @default(false)
+  status      String   @default("active") // active, inactive, draft
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+  orderItems OrderItem[]
+  reviews    Review[]
+  cartItems  CartItem[]
+  
+  @@index([categoryId])
+  @@index([featured])
+  @@index([status])
+}
+
+model Order {
+  id           String   @id @default(cuid())
+  orderNumber  String   @unique
+  userId       String
+  subtotal     Float
+  tax          Float
+  total        Float
+  status       String   @default("pending") // pending, processing, completed, cancelled
+  paymentMethod String?  // credit_card, paypal, etc.
+  paymentId    String?  // payment gateway transaction ID
+  shippingInfo Json?    // shipping address and details
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  // Relations
+  user       User       @relation(fields: [userId], references: [id])
+  orderItems OrderItem[]
+  
+  @@index([userId])
+  @@index([status])
+}
+
+model OrderItem {
+  id       String @id @default(cuid())
+  orderId  String
+  bookId   String
+  quantity Int    @default(1)
+  price    Float  // price at time of purchase
+  
+  // Relations
+  order Order @relation(fields: [orderId], references: [id])
+  book  Book  @relation(fields: [bookId], references: [id])
+  
+  @@index([orderId])
+  @@index([bookId])
+}
+
+model CartItem {
+  id       String @id @default(cuid())
+  userId   String
+  bookId   String
+  quantity Int    @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+  book Book @relation(fields: [bookId], references: [id])
+  
+  @@unique([userId, bookId])
+  @@index([userId])
+  @@index([bookId])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  userId    String
+  bookId    String
+  rating    Int      // 1-5 stars
+  comment   String?
+  verified  Boolean  @default(false) // verified purchase
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+  book Book @relation(fields: [bookId], references: [id])
+  
+  @@unique([userId, bookId])
+  @@index([bookId])
+  @@index([rating])
+}
